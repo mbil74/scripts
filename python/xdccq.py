@@ -2,7 +2,7 @@
 
 SCRIPT_NAME    = "xdccq"
 SCRIPT_AUTHOR  = "Randall Flagg <shinigami_flagg@yahoo.it>"
-SCRIPT_VERSION = "0.1.1"
+SCRIPT_VERSION = "0.1.2"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Queue Xdcc messages to bots"
 
@@ -15,8 +15,7 @@ except ImportError:
     print("Get WeeChat now at: http://www.weechat.org/")
     import_ok = False
 
-botname = ""
-pack = ""
+schedule = {}
 # create a dictionary to save botnames and packs
 # botname = {"botname1":"pack1","botname2":"pack2"}
 # print myDict["jeff"] # => "jeffs value"
@@ -27,7 +26,7 @@ channel = ""
 
 def xdccq_help_cb(data, buffer, args):
     """Callback for /xdccq command."""
-    global botname, pack, channel
+    global channel, schedule
     response = {
         'add', 'list', 'listall', 'clear', 'clearall',
     }
@@ -37,7 +36,18 @@ def xdccq_help_cb(data, buffer, args):
             if words[0] == "add":
                 channel = buffer
                 botname = words[1]
-                pack = numToList(words[2])
+                newpacks = numToList(words[2])
+
+                if botname in schedule:
+                    packs = schedule[botname]
+                else:
+                    packs = []
+                weechat.prnt('', "packs PRE  = %s" % packs)
+                
+                packs.extend(newpacks)
+                weechat.prnt('', "packs POST = %s" % packs)
+
+                schedule.update({botname : packs})
                 # look for packs aldready added
                 # if already in transfer just add to list
                 # else add and start transfer
@@ -59,33 +69,33 @@ def xdccq_help_cb(data, buffer, args):
                 else:
                     weechat.prnt('', "%s already in xdcc auto-accept nicks, not added." % botname)
 
-                if len(pack):
-                    runcommands()
+                if len(packs):
+                    runcommands(botname)
                     pass
             elif words[0] == "list":
-                # if botname[words[1]]:
-                #     weechat.prnt('',"%s packs left" % botname[words[1]])
-                #     weechat.prnt('',"from %s bot" % words[1])
-                # else:
-                #     weechat.prnt('',"Botname not in queue. Can't list!")
-                pass
-            elif words[0] == "listall":
-                if len(pack):
-                    weechat.prnt('', "%s packs left" % pack)
-                    weechat.prnt('', "from %s bot" % botname)
+                if len(words) > 1:
+                    botname = words[1]
+                    if botname in schedule:
+                        packs = schedule[botname]
+                        weechat.prnt('',"%s packs left" % len(packs))
+                        weechat.prnt('',"from %s bot" % words[1])
+                    else:
+                        weechat.prnt('',"%s not in queue. Can't list!" % botname)
                 else:
-                    weechat.prnt('', "No packs left")
+                    weechat.prnt('', "No bot specified. Scheduled packs : %s" % schedule)
+            elif words[0] == "listall":
+                weechat.prnt('', "scheduled packs : %s" % schedule)
             elif words[0] == "clear":
-                # if botname[words[1]]:
-                #     del botname[words[1]]
-                #     weechat.prnt('',"%s bot queue cleared" % words[1])
-                # else:
-                #     weechat.prnt('',"Botname not in queue. Can't clear!")
-                pass
+                if len(words) > 1:
+                    botname = words[1]
+                    if botname in schedule:
+                        schedule.update({botname : []})
+                    else:
+                        weechat.prnt('',"%s not in queue. Can't clear!" % botname)
+                else:
+                    weechat.prnt('',"No bot specified. Can't clear!")
             elif words[0] == "clearall":
-                botname = ""
-                pack = ""
-                # botname.clear()
+                schedule = {}
                 weechat.prnt('', "Queue cleared")
         else:
             weechat.prnt('', "xdccq error: %s not a recognized command. Try /help xdccq" % words[0])
@@ -127,21 +137,38 @@ def numToList(string):
     return ret
 
 
-def runcommands():
-    global botname, pack, channel
-    weechat.prnt('', "Pack %s remaining" % pack)
-    if len(pack):
-        onepack = pack.pop(0)
-        weechat.command(channel, "/msg " + botname + " xdcc send " + str(onepack))
+def runcommands(botname):
+    global channel, schedule
+
+    if botname in schedule:
+        pack = schedule[botname]
+
+        weechat.prnt('', "Pack %s remaining" % pack)
+        weechat.prnt('', "botname = %s" % botname)
+        weechat.prnt('', "schedule = %s" % schedule)
+
+        if len(pack):
+            onepack = pack.pop(0)
+            cmd = "/msg " + botname + " xdcc send " + str(onepack)
+            weechat.command(channel, cmd)
+            schedule.update({botname : pack})
+
     return weechat.WEECHAT_RC_OK
 
 
 def xfer_ended_signal_cb(data, signal, signal_data):
     # at the end of transfer print the botname and completed file
-    # weechat.infolist_next(signal_data)
-    # weechat.prnt('',"%s" % weechat.infolist_string(signal_data, 'remote_nick'))
-    runcommands()
+    weechat.infolist_next(signal_data)
+    # status_string = weechat.infolist_string(signal_data, 'status_string'),
+    # filename = weechat.infolist_string(signal_data, 'filename'),
+    # local_filename = weechat.infolist_string(signal_data, 'local_filename'),
+    # size = weechat.infolist_string(signal_data, 'size'),
+    botname = weechat.infolist_string(signal_data, 'remote_nick'),
+    weechat.prnt("", "remote_nick = %s" % botname)
+
+    runcommands(''.join(botname))
     return weechat.WEECHAT_RC_OK
+
 
 if __name__ == "__main__" and import_ok:
     weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE, SCRIPT_DESC, "", "")
