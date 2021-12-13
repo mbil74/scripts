@@ -42,11 +42,8 @@ def xdccq_help_cb(data, buffer, args):
                     packs = schedule[botname]
                 else:
                     packs = []
-                weechat.prnt('', "packs PRE  = %s" % packs)
-                
-                packs.extend(newpacks)
-                weechat.prnt('', "packs POST = %s" % packs)
 
+                packs.extend(newpacks)
                 schedule.update({botname : packs})
                 # look for packs aldready added
                 # if already in transfer just add to list
