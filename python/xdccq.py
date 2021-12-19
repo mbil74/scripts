@@ -2,7 +2,7 @@
 
 SCRIPT_NAME    = "xdccq"
 SCRIPT_AUTHOR  = "Randall Flagg <shinigami_flagg@yahoo.it>"
-SCRIPT_VERSION = "0.1.3"
+SCRIPT_VERSION = "0.1.4"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Queue Xdcc messages to bots"
 
@@ -65,6 +65,7 @@ def xdccq_help_cb(data, buffer, args):
                 if len(packs):
                     runcommands(botname)
                     pass
+
             elif words[0] == "list":
                 if len(words) > 1:
                     botname = words[1]
@@ -76,8 +77,14 @@ def xdccq_help_cb(data, buffer, args):
                         weechat.prnt('',"%s not in queue. Can't list!" % botname)
                 else:
                     weechat.prnt('', "No bot specified. Scheduled packs : %s" % schedule)
+
             elif words[0] == "listall":
-                weechat.prnt('', "scheduled packs : %s" % schedule)
+                # weechat.prnt('', "scheduled packs : %s" % schedule)
+                weechat.prnt('', "SCHEDULED PACKS [" + str(len(schedule)) + "]")
+                for key in sorted(schedule):
+                    list = schedule[key]
+                    weechat.prnt('', "\t" + key + " [" + str(len(list)) +  "] ==>> " + str(list))
+
             elif words[0] == "clear":
                 if len(words) > 1:
                     botname = words[1]
@@ -87,11 +94,17 @@ def xdccq_help_cb(data, buffer, args):
                         weechat.prnt('',"%s not in queue. Can't clear!" % botname)
                 else:
                     weechat.prnt('',"No bot specified. Can't clear!")
+
             elif words[0] == "clearall":
                 schedule = {}
                 weechat.prnt('', "Queue cleared")
+
             elif words[0] == "down":
-                weechat.prnt('', "Now downloading: %s" % downloading)
+                weechat.prnt('', "NOW DOWNLOADING [" + str(len(downloading)) + "]")
+                for key in sorted(downloading):
+                    item = downloading[key]
+                    weechat.prnt('', "\t" + key + " ==>> " + item)
+
         else:
             weechat.prnt('', "xdccq error: %s not a recognized command. Try /help xdccq" % words[0])
 
