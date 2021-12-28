@@ -2,7 +2,7 @@
 
 SCRIPT_NAME    = "xdccq"
 SCRIPT_AUTHOR  = "Randall Flagg <shinigami_flagg@yahoo.it>"
-SCRIPT_VERSION = "0.1.4"
+SCRIPT_VERSION = "0.1.1.m4"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Queue Xdcc messages to bots"
 
@@ -18,24 +18,20 @@ except ImportError:
 
 schedule = {}
 downloading = {}
-# create a dictionary to save botnames and packs
-# botname = {"botname1":"pack1","botname2":"pack2"}
-# print myDict["jeff"] # => "jeffs value"
-# print myDict.keys() # => ["john", "jeff"]
 
 channel = ""
-
 
 def xdccq_help_cb(data, buffer, args):
     """Callback for /xdccq command."""
     global channel, downloading, schedule
     response = {
-        'add', 'list', 'listall', 'clear', 'clearall', 'down',
+        'add', 'list', 'listall', 'clear', 'clearall', 'downloading', 'process'
     }
     if args:
         words = args.strip().split(' ')
-        if words[0] in response:
-            if words[0] == "add":
+        cmd = words[0].lower()
+        if cmd in response:
+            if cmd == "add":
                 channel = buffer
                 botname = words[1]
                 newpacks = numToList(words[2])
@@ -66,7 +62,7 @@ def xdccq_help_cb(data, buffer, args):
                     runcommands(botname)
                     pass
 
-            elif words[0] == "list":
+            elif cmd == "list":
                 if len(words) > 1:
                     botname = words[1]
                     if botname in schedule:
@@ -78,14 +74,14 @@ def xdccq_help_cb(data, buffer, args):
                 else:
                     weechat.prnt('', "No bot specified. Scheduled packs : %s" % schedule)
 
-            elif words[0] == "listall":
+            elif cmd == "listall":
                 # weechat.prnt('', "scheduled packs : %s" % schedule)
                 weechat.prnt('', "SCHEDULED PACKS [" + str(len(schedule)) + "]")
                 for key in sorted(schedule):
                     list = schedule[key]
-                    weechat.prnt('', "\t" + key + " [" + str(len(list)) +  "] ==>> " + str(list))
+                    weechat.prnt('', "    " + key + " [" + str(len(list)) +  "] ==>> " + str(list))
 
-            elif words[0] == "clear":
+            elif cmd == "clear":
                 if len(words) > 1:
                     botname = words[1]
                     if botname in schedule:
@@ -95,15 +91,25 @@ def xdccq_help_cb(data, buffer, args):
                 else:
                     weechat.prnt('',"No bot specified. Can't clear!")
 
-            elif words[0] == "clearall":
+            elif cmd == "clearall":
                 schedule = {}
                 weechat.prnt('', "Queue cleared")
 
-            elif words[0] == "down":
+            elif cmd == "process":
+                if len(words) > 1:
+                    botname = words[1]
+                    if botname in schedule:
+                        runcommands(botname)
+                    else:
+                        weechat.prnt('',"%s not in queue. Can't process it!" % botname)
+                else:
+                    weechat.prnt('',"No bot specified. Can't process!")
+
+            elif cmd == "downloading":
                 weechat.prnt('', "NOW DOWNLOADING [" + str(len(downloading)) + "]")
                 for key in sorted(downloading):
                     item = downloading[key]
-                    weechat.prnt('', "\t" + key + " ==>> " + item)
+                    weechat.prnt('', "    " + key + " ==>> " + item)
 
         else:
             weechat.prnt('', "xdccq error: %s not a recognized command. Try /help xdccq" % words[0])
@@ -123,7 +129,7 @@ def add_schedule(botname, list):
     schedule.update({botname : packs})
     return packs
 
-
+    
 def numToList(string):
     """Converts a string like '3,5,7-9,14' into a list."""
     ret = []
@@ -210,12 +216,13 @@ if __name__ == "__main__" and import_ok:
     weechat.hook_command(
             SCRIPT_NAME, SCRIPT_DESC,
             '\nadd [name] packs\n list\n listall [name]\n clear\n clearall [name]\n down',
-            'ADD: adds packs to [botname] queue  \n LIST: list [botname] queue \n Pack format can be 1-10 or 1,2,3 or 1-10,12,15 \n LISTALL: list all queue \n CLEAR: clean all queues \n CLEARALL: clears queue for [botname]  \n down: show currently downloading packs',
+            'ADD: adds packs to [botname] queue  \n LIST: list [botname] queue \n Pack format can be 1-10 or 1,2,3 or 1-10,12,15 \n LISTALL: list all queue \n CLEARALL: clean all queues \n CLEAR: clears queue for [botname] \n down: show currently downloading packs \n process: process queue for [botname]',
             'add %(nick) packs'
             ' || list  %(nick)'
             ' || listall'
             ' || clear %(nick)'
             ' || clearall'
-            ' || down',
+            ' || process %(nick)'
+            ' || downloading',
             'xdccq_help_cb', '')
     weechat.hook_signal("xfer_ended", "xfer_ended_signal_cb", "")
